@@ -24,8 +24,10 @@ export type Reminder = {
   createdAt: number;
 };
 
+// UUIDs so locally-created rows can upload to Postgres unchanged.
 export function newId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const Crypto = require('expo-crypto') as typeof import('expo-crypto');
+  return Crypto.randomUUID();
 }
 
 // expo-sqlite's web support is alpha, so the web build (used for capability
