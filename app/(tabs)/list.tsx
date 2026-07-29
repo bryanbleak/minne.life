@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store, type Entry, type SyncStatus } from '@/lib/db';
+import { syncAll } from '@/lib/sync';
 
 function formatWhen(epochMs: number): string {
   const d = new Date(epochMs);
@@ -40,7 +41,17 @@ export default function ListScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      let active = true;
       setEntries(store.listEntries());
+      // Opening the list is also a sync trigger; refresh badges when it finishes.
+      syncAll()
+        .then((changed) => {
+          if (active && changed) setEntries(store.listEntries());
+        })
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
     }, [])
   );
 

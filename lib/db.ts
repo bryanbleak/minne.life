@@ -39,6 +39,7 @@ type Store = {
   insertEntry(e: Entry): void;
   listEntries(): Entry[];
   deleteEntry(id: string): void;
+  setSyncStatus(id: string, status: SyncStatus): void;
   insertReminder(r: Reminder): void;
   listReminders(): Reminder[];
   setReminderDone(id: string, done: 0 | 1): void;
@@ -54,6 +55,10 @@ function makeMemoryStore(): Store {
     deleteEntry: (id) => {
       const i = entries.findIndex((e) => e.id === id);
       if (i >= 0) entries.splice(i, 1);
+    },
+    setSyncStatus: (id, status) => {
+      const e = entries.find((x) => x.id === id);
+      if (e) e.syncStatus = status;
     },
     insertReminder: (r) => void reminders.unshift(r),
     listReminders: () => [...reminders],
@@ -123,6 +128,8 @@ function makeSqliteStore(): Store {
     listEntries: () =>
       db.getAllSync<EntryRow>('SELECT * FROM entries ORDER BY created_at DESC').map(toEntry),
     deleteEntry: (id) => db.runSync('DELETE FROM entries WHERE id = ?', [id]),
+    setSyncStatus: (id, status) =>
+      db.runSync('UPDATE entries SET sync_status = ? WHERE id = ?', [status, id]),
     insertReminder: (r) =>
       db.runSync('INSERT INTO reminders (id, text, done, created_at) VALUES (?, ?, ?, ?)', [
         r.id,

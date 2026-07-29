@@ -16,6 +16,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { newId, store } from '@/lib/db';
+import { syncAll } from '@/lib/sync';
 
 function formatDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -81,6 +82,7 @@ export default function AddNoteScreen() {
         createdAt: Date.now(),
         syncStatus: 'local',
       });
+      syncAll().catch(() => {});
       router.push('/list');
     } finally {
       setBusy(false);
