@@ -1,6 +1,6 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -37,6 +37,7 @@ const SYNC_LABEL: Record<SyncStatus, { label: string; color: string }> = {
 export default function ListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const router = useRouter();
   const [entries, setEntries] = useState<Entry[]>([]);
 
   useFocusEffect(
@@ -60,7 +61,10 @@ export default function ListScreen() {
     const title =
       item.title ?? (item.kind === 'audio' ? 'Voice memo' : (item.content ?? '').slice(0, 60) || 'Note');
     return (
-      <View style={styles.row}>
+      <Pressable
+        onPress={() => router.push(`/entry/${item.id}`)}
+        accessibilityLabel={`Open ${title}`}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
         <IconSymbol
           name={item.kind === 'audio' ? 'waveform' : 'square.and.pencil'}
           size={24}
@@ -78,7 +82,8 @@ export default function ListScreen() {
         <View style={[styles.badge, { borderColor: sync.color }]}>
           <ThemedText style={[styles.badgeText, { color: sync.color }]}>{sync.label}</ThemedText>
         </View>
-      </View>
+        <IconSymbol name="chevron.right" size={18} color="#8a8a8e" />
+      </Pressable>
     );
   };
 
@@ -114,6 +119,7 @@ const styles = StyleSheet.create({
   heading: { paddingTop: 8, paddingBottom: 12 },
   listContent: { paddingBottom: 24 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  rowPressed: { opacity: 0.6 },
   rowBody: { flex: 1, gap: 2 },
   meta: { fontSize: 13, opacity: 0.6 },
   badge: {

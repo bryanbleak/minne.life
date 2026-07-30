@@ -20,6 +20,8 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'mic.fill': 'mic',
   'stop.fill': 'stop',
+  'play.fill': 'play-arrow',
+  'pause.fill': 'pause',
   'square.and.pencil': 'edit',
   'list.bullet': 'list',
   'lightbulb.fill': 'lightbulb',

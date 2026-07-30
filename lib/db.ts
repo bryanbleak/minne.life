@@ -38,6 +38,7 @@ const isWeb = Platform.OS === 'web';
 type Store = {
   insertEntry(e: Entry): void;
   listEntries(): Entry[];
+  getEntry(id: string): Entry | null;
   deleteEntry(id: string): void;
   setSyncStatus(id: string, status: SyncStatus): void;
   insertReminder(r: Reminder): void;
@@ -52,6 +53,7 @@ function makeMemoryStore(): Store {
   return {
     insertEntry: (e) => void entries.unshift(e),
     listEntries: () => [...entries],
+    getEntry: (id) => entries.find((e) => e.id === id) ?? null,
     deleteEntry: (id) => {
       const i = entries.findIndex((e) => e.id === id);
       if (i >= 0) entries.splice(i, 1);
@@ -127,6 +129,10 @@ function makeSqliteStore(): Store {
       ),
     listEntries: () =>
       db.getAllSync<EntryRow>('SELECT * FROM entries ORDER BY created_at DESC').map(toEntry),
+    getEntry: (id) => {
+      const row = db.getFirstSync<EntryRow>('SELECT * FROM entries WHERE id = ?', [id]);
+      return row ? toEntry(row) : null;
+    },
     deleteEntry: (id) => db.runSync('DELETE FROM entries WHERE id = ?', [id]),
     setSyncStatus: (id, status) =>
       db.runSync('UPDATE entries SET sync_status = ? WHERE id = ?', [status, id]),
