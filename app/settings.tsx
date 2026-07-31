@@ -47,7 +47,7 @@ export default function SettingsScreen() {
       return;
     }
     setStep('code');
-    setMessage(`We emailed a 6-digit code to ${address}.`);
+    setMessage(`We emailed a sign-in code to ${address}.`);
   }, [email]);
 
   const verifyCode = useCallback(async () => {
@@ -97,7 +97,7 @@ export default function SettingsScreen() {
           ) : step === 'email' ? (
             <>
               <ThemedText style={styles.muted}>
-                Sign in to back up your notes. No password — we email you a 6-digit code.
+                Sign in to back up your notes. No password — we email you a sign-in code.
               </ThemedText>
               <TextInput
                 value={email}
@@ -125,15 +125,16 @@ export default function SettingsScreen() {
               <TextInput
                 value={code}
                 onChangeText={setCode}
-                placeholder="6-digit code"
+                placeholder="Code from your email"
                 placeholderTextColor="#8888"
                 keyboardType="number-pad"
-                maxLength={6}
+                maxLength={10}
                 style={[styles.input, styles.codeInput, { color: textColor }]}
               />
               <Pressable
                 onPress={verifyCode}
                 disabled={busy || code.trim().length < 6}
+                accessibilityLabel="Sign in with code"
                 style={({ pressed }) => [styles.button, { backgroundColor: tint }, pressed && styles.pressed]}>
                 {busy ? (
                   <ActivityIndicator color="#fff" />
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
-  codeInput: { letterSpacing: 8, fontSize: 22, textAlign: 'center' },
+  codeInput: { letterSpacing: 4, fontSize: 22, textAlign: 'center' },
   button: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   buttonOutline: {
     borderWidth: 1.5,
