@@ -18,6 +18,10 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="text-note" options={{ presentation: 'modal', title: 'New note' }} />
         <Stack.Screen name="entry/[id]" options={{ title: '', headerBackTitle: 'Notes' }} />
+        <Stack.Screen
+          name="finish-note"
+          options={{ presentation: 'modal', title: 'Recording saved', gestureEnabled: false }}
+        />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
       </Stack>
       <StatusBar style="auto" />

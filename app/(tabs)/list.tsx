@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,7 +38,17 @@ export default function ListScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
   const router = useRouter();
+  const textColor = Colors[colorScheme].text;
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [query, setQuery] = useState('');
+
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? entries.filter(
+        (e) =>
+          (e.title ?? '').toLowerCase().includes(q) || (e.content ?? '').toLowerCase().includes(q)
+      )
+    : entries;
 
   useFocusEffect(
     useCallback(() => {
@@ -93,15 +103,30 @@ export default function ListScreen() {
         <ThemedText type="title" style={styles.heading}>
           Notes
         </ThemedText>
+        {entries.length > 0 && (
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search titles and text…"
+            placeholderTextColor="#8888"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+            style={[styles.search, { color: textColor }]}
+          />
+        )}
         {entries.length === 0 ? (
           <View style={styles.empty}>
             <ThemedText style={styles.emptyText}>
               Nothing here yet. Record a voice memo or write a note from the Add Note tab.
             </ThemedText>
           </View>
+        ) : visible.length === 0 ? (
+          <View style={styles.empty}>
+            <ThemedText style={styles.emptyText}>No notes match “{query.trim()}”.</ThemedText>
+          </View>
         ) : (
           <FlatList
-            data={entries}
+            data={visible}
             keyExtractor={(e) => e.id}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
@@ -117,6 +142,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: 20 },
   heading: { paddingTop: 8, paddingBottom: 12 },
+  search: {
+    borderWidth: 1,
+    borderColor: '#8886',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 16,
+    marginBottom: 8,
+  },
   listContent: { paddingBottom: 24 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   rowPressed: { opacity: 0.6 },

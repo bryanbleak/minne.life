@@ -58,7 +58,7 @@ async function syncEntry(entry: Entry, userId: string): Promise<void> {
       entry_id: entry.id,
       user_id: userId,
       order: 0,
-      origin: 'typed',
+      origin: entry.origin ?? 'typed',
       content: entry.content,
       created_at: createdAt,
     });
@@ -90,4 +90,29 @@ async function syncEntry(entry: Entry, userId: string): Promise<void> {
     created_at: createdAt,
   });
   if (recordingError) throw recordingError;
+}
+
+// Deletes locally always; deletes server-side too when the entry ever synced
+// and we're signed in. Deleting the entries row cascades to blocks/recordings.
+export async function deleteEntryEverywhere(entry: Entry): Promise<void> {
+  if (entry.syncStatus === 'synced') {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      const ext = entry.audioPath?.split('.').pop() ?? 'm4a';
+      if (entry.kind === 'audio') {
+        await supabase.storage
+          .from('audio')
+          .remove([`${session.user.id}/${entry.id}/${entry.id}.${ext}`]);
+      }
+      const { error } = await supabase.from('entries').delete().eq('id', entry.id);
+      if (error) throw error;
+    }
+  }
+  if (entry.audioPath && Platform.OS !== 'web') {
+    const FileSystem = require('expo-file-system/legacy') as typeof import('expo-file-system/legacy');
+    await FileSystem.deleteAsync(entry.audioPath, { idempotent: true }).catch(() => {});
+  }
+  store.deleteEntry(entry.id);
 }

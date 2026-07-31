@@ -1,7 +1,7 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store, type Entry } from '@/lib/db';
+import { deleteEntryEverywhere } from '@/lib/sync';
 
 function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
@@ -79,7 +80,39 @@ function AudioPlayerView({ entry }: { entry: Entry }) {
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const entry = useMemo(() => (id ? store.getEntry(id) : null), [id]);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = () => {
+    if (!entry) return;
+    Alert.alert(
+      'Delete this note?',
+      entry.kind === 'audio'
+        ? 'The recording will be permanently deleted from this phone and from your account. This cannot be undone.'
+        : 'The note will be permanently deleted from this phone and from your account. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteEntryEverywhere(entry);
+              router.back();
+            } catch {
+              setDeleting(false);
+              Alert.alert(
+                'Could not finish deleting',
+                'The note was not fully removed (possibly a network issue). Please try again.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!entry) {
     return (
@@ -105,8 +138,26 @@ export default function EntryDetailScreen() {
             </ThemedText>
           </>
         ) : (
-          <ThemedText style={styles.body}>{entry.content}</ThemedText>
+          <>
+            {entry.origin === 'source' && (
+              <View style={styles.sourceBadge}>
+                <ThemedText style={styles.sourceBadgeText}>
+                  Quoted source — kept verbatim
+                </ThemedText>
+              </View>
+            )}
+            <ThemedText style={styles.body}>{entry.content}</ThemedText>
+          </>
         )}
+
+        <Pressable
+          onPress={confirmDelete}
+          disabled={deleting}
+          accessibilityLabel="Delete note"
+          style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
+          <IconSymbol name="trash" size={18} color="#d33" />
+          <ThemedText style={styles.deleteText}>{deleting ? 'Deleting…' : 'Delete'}</ThemedText>
+        </Pressable>
       </ScrollView>
     </ThemedView>
   );
@@ -138,4 +189,22 @@ const styles = StyleSheet.create({
   clock: { textAlign: 'center', opacity: 0.6, fontVariant: ['tabular-nums'] },
   body: { fontSize: 17, lineHeight: 26 },
   transcriptNote: { opacity: 0.5, fontStyle: 'italic', marginTop: 8 },
+  sourceBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#b8860b',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  sourceBadgeText: { fontSize: 13, color: '#b8860b', fontWeight: '600' },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 32,
+    paddingVertical: 12,
+  },
+  deleteText: { color: '#d33', fontWeight: '600' },
 });

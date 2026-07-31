@@ -6,6 +6,8 @@ import { Platform } from 'react-native';
 export type EntryKind = 'audio' | 'text';
 export type SyncStatus = 'local' | 'uploading' | 'synced';
 
+export type TextOrigin = 'typed' | 'source';
+
 export type Entry = {
   id: string;
   kind: EntryKind;
@@ -15,6 +17,9 @@ export type Entry = {
   durationMs: number | null;
   createdAt: number; // epoch ms
   syncStatus: SyncStatus;
+  // Provenance for text entries (SPEC.md §5): 'source' = verbatim quoted
+  // material the AI pipeline must never touch. Null for audio entries.
+  origin: TextOrigin | null;
 };
 
 export type Reminder = {
@@ -41,6 +46,7 @@ type Store = {
   getEntry(id: string): Entry | null;
   deleteEntry(id: string): void;
   setSyncStatus(id: string, status: SyncStatus): void;
+  setTitle(id: string, title: string | null): void;
   insertReminder(r: Reminder): void;
   listReminders(): Reminder[];
   setReminderDone(id: string, done: 0 | 1): void;
@@ -61,6 +67,10 @@ function makeMemoryStore(): Store {
     setSyncStatus: (id, status) => {
       const e = entries.find((x) => x.id === id);
       if (e) e.syncStatus = status;
+    },
+    setTitle: (id, title) => {
+      const e = entries.find((x) => x.id === id);
+      if (e) e.title = title;
     },
     insertReminder: (r) => void reminders.unshift(r),
     listReminders: () => [...reminders],
@@ -98,6 +108,10 @@ function makeSqliteStore(): Store {
       created_at INTEGER NOT NULL
     );
   `);
+  // Column added after first release; ignore "duplicate column" on upgraded installs.
+  try {
+    db.execSync('ALTER TABLE entries ADD COLUMN origin TEXT');
+  } catch {}
 
   type EntryRow = {
     id: string;
@@ -108,6 +122,7 @@ function makeSqliteStore(): Store {
     duration_ms: number | null;
     created_at: number;
     sync_status: SyncStatus;
+    origin: TextOrigin | null;
   };
 
   const toEntry = (r: EntryRow): Entry => ({
@@ -119,13 +134,14 @@ function makeSqliteStore(): Store {
     durationMs: r.duration_ms,
     createdAt: r.created_at,
     syncStatus: r.sync_status,
+    origin: r.origin,
   });
 
   return {
     insertEntry: (e) =>
       db.runSync(
-        'INSERT INTO entries (id, kind, title, content, audio_path, duration_ms, created_at, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [e.id, e.kind, e.title, e.content, e.audioPath, e.durationMs, e.createdAt, e.syncStatus]
+        'INSERT INTO entries (id, kind, title, content, audio_path, duration_ms, created_at, sync_status, origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [e.id, e.kind, e.title, e.content, e.audioPath, e.durationMs, e.createdAt, e.syncStatus, e.origin]
       ),
     listEntries: () =>
       db.getAllSync<EntryRow>('SELECT * FROM entries ORDER BY created_at DESC').map(toEntry),
@@ -136,6 +152,7 @@ function makeSqliteStore(): Store {
     deleteEntry: (id) => db.runSync('DELETE FROM entries WHERE id = ?', [id]),
     setSyncStatus: (id, status) =>
       db.runSync('UPDATE entries SET sync_status = ? WHERE id = ?', [status, id]),
+    setTitle: (id, title) => db.runSync('UPDATE entries SET title = ? WHERE id = ?', [title, id]),
     insertReminder: (r) =>
       db.runSync('INSERT INTO reminders (id, text, done, created_at) VALUES (?, ?, ?, ?)', [
         r.id,
