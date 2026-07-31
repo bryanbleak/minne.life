@@ -6,10 +6,95 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getKeyStatus, setApiKey, type KeyStatus, type Provider } from '@/lib/pipeline';
 import { supabase } from '@/lib/supabase';
 import { syncAll } from '@/lib/sync';
 
 type AuthStep = 'email' | 'code';
+
+const PROVIDER_LABELS: Record<Provider, { name: string; hint: string }> = {
+  openai: { name: 'OpenAI', hint: 'Used to transcribe your recordings' },
+  anthropic: { name: 'Anthropic', hint: 'Used to clean up transcripts and suggest titles' },
+};
+
+function ApiKeyRow({
+  provider,
+  status,
+  onSaved,
+  textColor,
+  primary,
+}: {
+  provider: Provider;
+  status: { configured: boolean; last4?: string } | null;
+  onSaved: () => void;
+  textColor: string;
+  primary: string;
+}) {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const label = PROVIDER_LABELS[provider];
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await setApiKey(provider, value);
+      setValue('');
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save the key');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={styles.keyRow}>
+      <ThemedText type="defaultSemiBold">{label.name}</ThemedText>
+      <ThemedText style={styles.muted}>{label.hint}</ThemedText>
+      {status?.configured && !editing ? (
+        <View style={styles.keyStatusRow}>
+          <ThemedText style={styles.keySaved}>✓ Saved (····{status.last4})</ThemedText>
+          <Pressable onPress={() => setEditing(true)} hitSlop={8}>
+            <ThemedText style={{ color: primary, fontWeight: '600' }}>Replace</ThemedText>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <TextInput
+            value={value}
+            onChangeText={setValue}
+            placeholder="sk-..."
+            placeholderTextColor="#8888"
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            style={[styles.input, { color: textColor }]}
+          />
+          <Pressable
+            onPress={save}
+            disabled={busy || value.trim().length < 20}
+            style={({ pressed }) => [
+              styles.button,
+              { backgroundColor: primary },
+              (busy || value.trim().length < 20) && styles.buttonDisabled,
+              pressed && styles.pressed,
+            ]}>
+            {busy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <ThemedText style={styles.buttonText}>Save key</ThemedText>
+            )}
+          </Pressable>
+          {error && <ThemedText style={styles.message}>{error}</ThemedText>}
+        </>
+      )}
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -23,12 +108,24 @@ export default function SettingsScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const refreshKeyStatus = useCallback(() => {
+    getKeyStatus()
+      .then(setKeyStatus)
+      .catch(() => setKeyStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (session) refreshKeyStatus();
+    else setKeyStatus(null);
+  }, [session, refreshKeyStatus]);
 
   const sendCode = useCallback(async () => {
     const address = email.trim().toLowerCase();
@@ -153,11 +250,34 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <ThemedText type="subtitle">API keys</ThemedText>
-          <ThemedText style={styles.muted}>
-            Once transcription is live, you&apos;ll add your own OpenAI and Anthropic keys here so
-            each family member pays for their own usage. Keys are stored encrypted on the server and
-            never inside the app.
-          </ThemedText>
+          {session ? (
+            <>
+              <ThemedText style={styles.muted}>
+                Your recordings are transcribed and cleaned up using your own AI accounts, so you
+                pay only for your own usage. Keys are encrypted on the server — the app never
+                stores them.
+              </ThemedText>
+              <ApiKeyRow
+                provider="openai"
+                status={keyStatus?.openai ?? null}
+                onSaved={refreshKeyStatus}
+                textColor={textColor}
+                primary={primary}
+              />
+              <ApiKeyRow
+                provider="anthropic"
+                status={keyStatus?.anthropic ?? null}
+                onSaved={refreshKeyStatus}
+                textColor={textColor}
+                primary={primary}
+              />
+            </>
+          ) : (
+            <ThemedText style={styles.muted}>
+              Sign in first, then add your own OpenAI and Anthropic keys here to enable
+              transcription.
+            </ThemedText>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -184,6 +304,10 @@ const styles = StyleSheet.create({
   },
   codeInput: { letterSpacing: 4, fontSize: 22, textAlign: 'center' },
   button: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  buttonDisabled: { opacity: 0.5 },
+  keyRow: { gap: 6, marginTop: 10 },
+  keyStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  keySaved: { color: '#2a9d3f', fontWeight: '600' },
   buttonOutline: {
     borderWidth: 1.5,
     borderRadius: 10,

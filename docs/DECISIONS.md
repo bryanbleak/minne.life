@@ -13,3 +13,11 @@ Amendments and decisions made after [SPEC.md](SPEC.md) was written. Newest last.
 7. **Expo SDK 54, not latest** — pinned to what App Store Expo Go supports (SDK 57 Expo Go awaiting Apple approval as of July 2026). Use `expo-audio` (not the deprecated `expo-av` named in SPEC.md §3).
 8. **Anticipated early blocker:** recording with screen locked (driving use case) needs background audio → dev build → $99 Apple Developer Program. May hit during Phase 1 testing, sooner than SPEC.md §11 implies.
 9. **Model pricing verified 2026-07-29:** claude-sonnet-5 $3/$15 per MTok (intro $2/$10 ends 2026-08-31), claude-haiku-4-5 $1/$5. Cost model in SPEC.md §12 holds.
+
+## 2026-07-31 — Phase 2 scope (Bryan: "Build Phase 2")
+
+10. **Pipeline architecture:** two Edge Functions. `api-keys` stores per-user OpenAI/Anthropic keys AES-GCM-encrypted (server-held ENCRYPTION_KEY secret); RLS denies all client access to the table; status responses expose only the last 4 chars. `process-recording` runs transcribe → clean → extract, idempotent per stage, triggered by the app after each audio upload (and manually from the entry screen).
+11. **Extraction is partial for now:** title + one-line gist only (title never overwrites a user-typed one). Full extraction (people, tags, scriptures, memory date) waits for the vocabulary tables. Glossary keyword hints (SPEC.md §7) also deferred — needs the glossary table.
+12. **Transcription model** defaults to `gpt-transcribe` per SPEC.md §3, overridable via the TRANSCRIBE_MODEL function secret if the name needs adjusting.
+13. **25MB audio cap** for transcription (OpenAI limit); split-on-silence for long recordings is deferred.
+14. **Cleanup prompt** is SPEC.md §7 v1 verbatim (pronouns neutralized for multi-tenancy), tracked as prompt_version `clean-v1`.

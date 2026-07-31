@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { store, type Entry } from './db';
+import { processRecording } from './pipeline';
 import { supabase } from './supabase';
 
 // Upload queue — SPEC.md §7 stages 1-2. Local capture already happened; this
@@ -27,6 +28,10 @@ export async function syncAll(): Promise<boolean> {
         await syncEntry(entry, session.user.id);
         store.setSyncStatus(entry.id, 'synced');
         changedAnything = true;
+        // Kick off transcription in the background (SPEC.md §7 stages 3-5).
+        // Fire-and-forget: failures surface on the entry screen, and the
+        // pipeline is idempotent so any later trigger retries safely.
+        if (entry.kind === 'audio') processRecording(entry.id).catch(() => {});
       } catch {
         store.setSyncStatus(entry.id, 'local'); // retry on the next trigger
       }

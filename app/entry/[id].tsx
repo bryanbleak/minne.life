@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store, type Entry } from '@/lib/db';
+import { fetchTranscripts, processRecording, type Transcripts } from '@/lib/pipeline';
 import { deleteEntryEverywhere } from '@/lib/sync';
 
 function formatClock(seconds: number): string {
@@ -79,7 +80,87 @@ function AudioPlayerView({ entry }: { entry: Entry }) {
   );
 }
 
+// Cleaned text by default, raw verbatim behind a toggle (SPEC.md §9's read
+// experience, brought to iOS for parity — docs/DECISIONS.md #6).
+function TranscriptSection({ entry, primary }: { entry: Entry; primary: string }) {
+  const [transcripts, setTranscripts] = useState<Transcripts | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = React.useCallback(() => {
+    fetchTranscripts(entry.id)
+      .then(setTranscripts)
+      .catch(() => setTranscripts(null));
+  }, [entry.id]);
+
+  useEffect(() => {
+    if (entry.syncStatus === 'synced') load();
+  }, [entry.syncStatus, load]);
+
+  const transcribeNow = async () => {
+    setWorking(true);
+    setNote('Working on it — transcription can take a minute for long recordings…');
+    try {
+      const result = await processRecording(entry.id);
+      if (result.message) setNote(result.message);
+      else setNote(null);
+      load();
+    } catch {
+      setNote('Something went wrong. Try again in a moment.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  if (entry.syncStatus !== 'synced') {
+    return (
+      <ThemedText style={styles.transcriptNote}>
+        The transcript will appear here after this recording finishes uploading (sign in from
+        Settings if you haven&apos;t).
+      </ThemedText>
+    );
+  }
+
+  const bodyText = showRaw ? transcripts?.raw : (transcripts?.clean ?? transcripts?.raw);
+
+  return (
+    <View style={styles.transcriptWrap}>
+      {transcripts?.gist && <ThemedText style={styles.gist}>{transcripts.gist}</ThemedText>}
+      {bodyText ? (
+        <>
+          <ThemedText style={styles.body}>{bodyText}</ThemedText>
+          {transcripts?.clean && transcripts?.raw && (
+            <Pressable onPress={() => setShowRaw((v) => !v)} hitSlop={8}>
+              <ThemedText style={[styles.rawToggle, { color: primary }]}>
+                {showRaw ? 'Show cleaned-up version' : 'Show word-for-word original'}
+              </ThemedText>
+            </Pressable>
+          )}
+        </>
+      ) : (
+        <Pressable
+          onPress={transcribeNow}
+          disabled={working}
+          style={({ pressed }) => [
+            styles.transcribeButton,
+            { backgroundColor: primary },
+            working && styles.buttonDisabled,
+            pressed && styles.pressed,
+          ]}>
+          <ThemedText style={styles.transcribeButtonText}>
+            {working ? 'Transcribing…' : 'Transcribe this recording'}
+          </ThemedText>
+        </Pressable>
+      )}
+      {note && <ThemedText style={styles.transcriptNote}>{note}</ThemedText>}
+    </View>
+  );
+}
+
 export default function EntryDetailScreen() {
+  const colorScheme = useColorScheme() ?? 'light';
+  const primary = Colors[colorScheme].primary;
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const entry = useMemo(() => (id ? store.getEntry(id) : null), [id]);
@@ -134,9 +215,7 @@ export default function EntryDetailScreen() {
         {entry.kind === 'audio' ? (
           <>
             <AudioPlayerView entry={entry} />
-            <ThemedText style={styles.transcriptNote}>
-              The written transcript of this recording will appear here once transcription is built.
-            </ThemedText>
+            <TranscriptSection entry={entry} primary={primary} />
           </>
         ) : (
           <>
@@ -190,6 +269,12 @@ const styles = StyleSheet.create({
   clock: { textAlign: 'center', opacity: 0.6, fontVariant: ['tabular-nums'] },
   body: { fontSize: 17, lineHeight: 26 },
   transcriptNote: { opacity: 0.5, fontStyle: 'italic', marginTop: 8 },
+  transcriptWrap: { gap: 12, marginTop: 8 },
+  gist: { fontStyle: 'italic', opacity: 0.7 },
+  rawToggle: { fontWeight: '600', paddingVertical: 6 },
+  transcribeButton: { borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
+  transcribeButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  buttonDisabled: { opacity: 0.5 },
   sourceBadge: {
     alignSelf: 'flex-start',
     borderWidth: 1,
