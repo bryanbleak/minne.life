@@ -14,6 +14,7 @@ import { newId, store, type Reminder } from '@/lib/db';
 export default function RemindersScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const textColor = Colors[colorScheme].text;
   const [reminders, setReminders] = useState<Reminder[]>(() => store.listReminders());
   const [draft, setDraft] = useState('');
@@ -64,7 +65,7 @@ export default function RemindersScreen() {
           <Pressable
             onPress={add}
             accessibilityLabel="Add reminder"
-            style={({ pressed }) => [styles.addButton, { backgroundColor: tint }, pressed && styles.pressed]}>
+            style={({ pressed }) => [styles.addButton, { backgroundColor: primary }, pressed && styles.pressed]}>
             <ThemedText style={styles.addButtonText}>Add</ThemedText>
           </Pressable>
         </View>

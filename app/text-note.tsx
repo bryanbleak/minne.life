@@ -12,6 +12,7 @@ import { syncAll } from '@/lib/sync';
 export default function TextNoteScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const textColor = Colors[colorScheme].text;
   const router = useRouter();
   const [title, setTitle] = useState('');
@@ -64,7 +65,7 @@ export default function TextNoteScreen() {
               accessibilityLabel={label}
               style={[
                 styles.originChip,
-                origin === value && { backgroundColor: tint, borderColor: tint },
+                origin === value && { backgroundColor: primary, borderColor: primary },
               ]}>
               <ThemedText
                 style={[styles.originChipText, origin === value && styles.originChipTextActive]}>
@@ -91,7 +92,7 @@ export default function TextNoteScreen() {
         <Pressable
           onPress={save}
           accessibilityLabel="Save note"
-          style={({ pressed }) => [styles.saveButton, { backgroundColor: tint }, pressed && styles.pressed]}>
+          style={({ pressed }) => [styles.saveButton, { backgroundColor: primary }, pressed && styles.pressed]}>
           <ThemedText style={styles.saveText}>{body.trim() ? 'Save' : 'Cancel'}</ThemedText>
         </Pressable>
       </KeyboardAvoidingView>

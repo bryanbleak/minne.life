@@ -14,6 +14,7 @@ import { syncAll } from '@/lib/sync';
 export default function FinishNoteScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const textColor = Colors[colorScheme].text;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,7 +53,7 @@ export default function FinishNoteScreen() {
           onPress={() => finish(true)}
           style={({ pressed }) => [
             styles.saveButton,
-            { backgroundColor: tint },
+            { backgroundColor: primary },
             pressed && styles.pressed,
           ]}>
           <ThemedText style={styles.saveText}>Save</ThemedText>

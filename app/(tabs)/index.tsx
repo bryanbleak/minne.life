@@ -40,6 +40,7 @@ async function persistRecording(cacheUri: string, id: string): Promise<string> {
 export default function AddNoteScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const router = useRouter();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
@@ -109,7 +110,7 @@ export default function AddNoteScreen() {
             accessibilityLabel={isRecording ? 'Stop recording' : 'Start recording'}
             style={({ pressed }) => [
               styles.recordButton,
-              isRecording ? styles.recordButtonActive : { backgroundColor: tint },
+              isRecording ? styles.recordButtonActive : { backgroundColor: primary },
               pressed && styles.pressed,
             ]}>
             <IconSymbol name={isRecording ? 'stop.fill' : 'mic.fill'} size={56} color="#fff" />

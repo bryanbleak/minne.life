@@ -31,6 +31,7 @@ function formatWhen(epochMs: number): string {
 function AudioPlayerView({ entry }: { entry: Entry }) {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const player = useAudioPlayer(entry.audioPath ? { uri: entry.audioPath } : null);
   const status = useAudioPlayerStatus(player);
 
@@ -62,14 +63,14 @@ function AudioPlayerView({ entry }: { entry: Entry }) {
         accessibilityLabel={status.playing ? 'Pause' : 'Play'}
         style={({ pressed }) => [
           styles.playButton,
-          { backgroundColor: tint },
+          { backgroundColor: primary },
           pressed && styles.pressed,
         ]}>
         <IconSymbol name={status.playing ? 'pause.fill' : 'play.fill'} size={20} color="#fff" />
         <ThemedText style={styles.playText}>{status.playing ? 'Pause' : 'Play'}</ThemedText>
       </Pressable>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: tint }]} />
+        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: primary }]} />
       </View>
       <ThemedText style={styles.clock}>
         {formatClock(status.currentTime)} / {formatClock(status.duration)}

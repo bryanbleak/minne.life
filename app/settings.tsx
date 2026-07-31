@@ -14,6 +14,7 @@ type AuthStep = 'email' | 'code';
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const tint = Colors[colorScheme].tint;
+  const primary = Colors[colorScheme].primary;
   const textColor = Colors[colorScheme].text;
 
   const [session, setSession] = useState<Session | null>(null);
@@ -112,7 +113,7 @@ export default function SettingsScreen() {
               <Pressable
                 onPress={sendCode}
                 disabled={busy}
-                style={({ pressed }) => [styles.button, { backgroundColor: tint }, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.button, { backgroundColor: primary }, pressed && styles.pressed]}>
                 {busy ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
@@ -135,7 +136,7 @@ export default function SettingsScreen() {
                 onPress={verifyCode}
                 disabled={busy || code.trim().length < 6}
                 accessibilityLabel="Sign in with code"
-                style={({ pressed }) => [styles.button, { backgroundColor: tint }, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.button, { backgroundColor: primary }, pressed && styles.pressed]}>
                 {busy ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
