@@ -18,16 +18,32 @@ export default function RemindersScreen() {
   const textColor = Colors[colorScheme].text;
   const [reminders, setReminders] = useState<Reminder[]>(() => store.listReminders());
   const [draft, setDraft] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const refresh = useCallback(() => setReminders(store.listReminders()), []);
 
   const add = useCallback(() => {
     const text = draft.trim();
     if (!text) return;
-    store.insertReminder({ id: newId(), text, done: 0, createdAt: Date.now() });
+    if (editingId) {
+      store.setReminderText(editingId, text);
+    } else {
+      store.insertReminder({ id: newId(), text, done: 0, createdAt: Date.now() });
+    }
     setDraft('');
+    setEditingId(null);
     refresh();
-  }, [draft, refresh]);
+  }, [draft, editingId, refresh]);
+
+  const startEdit = useCallback((r: Reminder) => {
+    setEditingId(r.id);
+    setDraft(r.text);
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setDraft('');
+  }, []);
 
   const toggle = useCallback(
     (r: Reminder) => {
@@ -64,11 +80,16 @@ export default function RemindersScreen() {
           />
           <Pressable
             onPress={add}
-            accessibilityLabel="Add reminder"
+            accessibilityLabel={editingId ? 'Save reminder' : 'Add reminder'}
             style={({ pressed }) => [styles.addButton, { backgroundColor: primary }, pressed && styles.pressed]}>
-            <ThemedText style={styles.addButtonText}>Add</ThemedText>
+            <ThemedText style={styles.addButtonText}>{editingId ? 'Save' : 'Add'}</ThemedText>
           </Pressable>
         </View>
+        {editingId && (
+          <Pressable onPress={cancelEdit} hitSlop={8} style={styles.cancelEdit}>
+            <ThemedText style={{ color: primary, fontWeight: '600' }}>Cancel editing</ThemedText>
+          </Pressable>
+        )}
 
         {reminders.length === 0 ? (
           <View style={styles.empty}>
@@ -93,9 +114,14 @@ export default function RemindersScreen() {
                     color={item.done ? '#2a9d3f' : tint}
                   />
                 </Pressable>
-                <ThemedText style={[styles.rowText, item.done === 1 && styles.doneText]}>
-                  {item.text}
-                </ThemedText>
+                <Pressable style={styles.rowTextWrap} onPress={() => startEdit(item)}>
+                  <ThemedText style={[styles.rowText, item.done === 1 && styles.doneText]}>
+                    {item.text}
+                  </ThemedText>
+                </Pressable>
+                <Pressable onPress={() => startEdit(item)} hitSlop={8} accessibilityLabel="Edit reminder">
+                  <IconSymbol name="square.and.pencil" size={20} color={primary} />
+                </Pressable>
                 <Pressable onPress={() => remove(item)} hitSlop={8} accessibilityLabel="Delete reminder">
                   <IconSymbol name="trash" size={20} color="#8a8a8e" />
                 </Pressable>
@@ -128,7 +154,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   listContent: { paddingBottom: 24 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  rowText: { flex: 1, fontSize: 16 },
+  rowTextWrap: { flex: 1 },
+  rowText: { fontSize: 16 },
+  cancelEdit: { marginTop: -8, marginBottom: 12, alignSelf: 'flex-start' },
   doneText: { textDecorationLine: 'line-through', opacity: 0.5 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#8884' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },

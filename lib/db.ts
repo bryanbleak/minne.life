@@ -50,6 +50,7 @@ type Store = {
   insertReminder(r: Reminder): void;
   listReminders(): Reminder[];
   setReminderDone(id: string, done: 0 | 1): void;
+  setReminderText(id: string, text: string): void;
   deleteReminder(id: string): void;
 };
 
@@ -77,6 +78,10 @@ function makeMemoryStore(): Store {
     setReminderDone: (id, done) => {
       const r = reminders.find((x) => x.id === id);
       if (r) r.done = done;
+    },
+    setReminderText: (id, text) => {
+      const r = reminders.find((x) => x.id === id);
+      if (r) r.text = text;
     },
     deleteReminder: (id) => {
       const i = reminders.findIndex((r) => r.id === id);
@@ -165,6 +170,7 @@ function makeSqliteStore(): Store {
         'SELECT id, text, done, created_at AS createdAt FROM reminders ORDER BY done ASC, created_at DESC'
       ),
     setReminderDone: (id, done) => db.runSync('UPDATE reminders SET done = ? WHERE id = ?', [done, id]),
+    setReminderText: (id, text) => db.runSync('UPDATE reminders SET text = ? WHERE id = ?', [text, id]),
     deleteReminder: (id) => db.runSync('DELETE FROM reminders WHERE id = ?', [id]),
   };
 }
